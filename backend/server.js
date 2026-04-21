@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import db from './database.js';
 import { computeAnalytics } from './analytics.js';
 import { validateIntParam, validateCatBody, validateLogBody } from './validation.js';
@@ -290,9 +292,21 @@ app.use((err, req, res, _next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
+// ── Serve frontend in production ──
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const frontendDist = path.join(__dirname, '..', 'frontend', 'dist');
+
+app.use(express.static(frontendDist));
+
+// SPA fallback: serve index.html for any non-API route
+app.get('*', (req, res) => {
+  res.sendFile(path.join(frontendDist, 'index.html'));
+});
+
 // ── Start ──
 
 const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`${new Date().toISOString()} WhiskerWatch API running on http://localhost:${PORT}`);
+  console.log(`${new Date().toISOString()} WhiskerWatch running on http://localhost:${PORT}`);
 });
