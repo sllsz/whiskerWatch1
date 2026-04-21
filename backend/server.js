@@ -84,14 +84,23 @@ app.get('/api/cats/:catId/logs', (req, res) => {
 
   const logs = db.prepare(query).all(...params);
 
-  // Attach custom symptoms to each log
-  const getCustom = db.prepare(`
-    SELECT cs.id, cs.name FROM log_custom_symptoms lcs
-    JOIN custom_symptoms cs ON cs.id = lcs.symptom_id
-    WHERE lcs.log_id = ?
-  `);
-  for (const log of logs) {
-    log.customSymptoms = getCustom.all(log.id);
+  // Batch-fetch custom symptoms for all returned logs in one query
+  if (logs.length > 0) {
+    const logIds = logs.map(l => l.id);
+    const placeholders = logIds.map(() => '?').join(',');
+    const customRows = db.prepare(`
+      SELECT lcs.log_id, cs.id, cs.name FROM log_custom_symptoms lcs
+      JOIN custom_symptoms cs ON cs.id = lcs.symptom_id
+      WHERE lcs.log_id IN (${placeholders})
+    `).all(...logIds);
+
+    const byLogId = {};
+    for (const row of customRows) {
+      (byLogId[row.log_id] ??= []).push({ id: row.id, name: row.name });
+    }
+    for (const log of logs) {
+      log.customSymptoms = byLogId[log.id] || [];
+    }
   }
 
   res.json(logs);

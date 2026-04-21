@@ -68,9 +68,9 @@ export default function LogForm() {
       return;
     }
 
-    // Save custom symptoms for this log entry
-    if (activeCustomSymptoms.length > 0) {
-      await apiFetch(`/cats/${selectedCatId}/logs/${logDate}/custom-symptoms`, {
+    // Save custom symptoms for this log entry using the saved date
+    if (activeCustomSymptoms.length > 0 && result.data) {
+      await apiFetch(`/cats/${selectedCatId}/logs/${form.date}/custom-symptoms`, {
         method: 'PUT',
         body: { symptomIds: activeCustomSymptoms },
       });

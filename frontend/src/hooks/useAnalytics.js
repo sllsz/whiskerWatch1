@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { apiFetch } from '../api';
-import { METRICS } from '../constants';
+import { METRICS, SYMPTOMS } from '../constants';
 
 /**
  * Fetches analytics for a given cat.
@@ -31,6 +31,15 @@ export function useAnalyticsData(catId) {
 
 // ── Helpers ──
 
+/** Creates an empty data point with null metrics and zero symptoms (used for gaps). */
+function emptyPoint(label) {
+  const point = { date: label };
+  for (const m of METRICS) { point[m] = null; point[`${m}_avg`] = null; }
+  point.symptoms = 0;
+  for (const s of SYMPTOMS) { point[s] = 0; }
+  return point;
+}
+
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -42,9 +51,7 @@ function averagePoints(points, label) {
     avg[`${m}_avg`] = Number((points.reduce((s, p) => s + (p[`${m}_avg`] ?? p[m]), 0) / points.length).toFixed(2));
   }
   avg.symptoms = points.reduce((s, p) => s + (p.symptoms || 0), 0);
-  // Carry individual symptom counts for the stacked bar chart
-  const SYMPTOM_KEYS = ['vomiting', 'sneezing', 'lethargy', 'diarrhea'];
-  for (const s of SYMPTOM_KEYS) {
+  for (const s of SYMPTOMS) {
     avg[s] = points.reduce((sum, p) => sum + (p[s] || 0), 0);
   }
   return avg;
@@ -201,18 +208,7 @@ function computeWeekly(trends, offset) {
     if (dayTrend) {
       data.push({ ...dayTrend, date: DAY_NAMES[(dayDate.getDay())] });
     } else {
-      // Missing day — insert null point for gap
-      const point = { date: DAY_NAMES[dayDate.getDay()] };
-      for (const m of METRICS) {
-        point[m] = null;
-        point[`${m}_avg`] = null;
-      }
-      point.symptoms = 0;
-      point.vomiting = 0;
-      point.sneezing = 0;
-      point.lethargy = 0;
-      point.diarrhea = 0;
-      data.push(point);
+      data.push(emptyPoint(DAY_NAMES[dayDate.getDay()]));
     }
   }
 
@@ -263,10 +259,7 @@ function computeMonthly(trends, offset) {
     if (bucket && bucket.length > 0) {
       data.push(averagePoints(bucket, `Week ${w}`));
     } else {
-      const point = { date: `Week ${w}` };
-      for (const m of METRICS) { point[m] = null; point[`${m}_avg`] = null; }
-      point.symptoms = 0; point.vomiting = 0; point.sneezing = 0; point.lethargy = 0; point.diarrhea = 0;
-      data.push(point);
+      data.push(emptyPoint(`Week ${w}`));
     }
   }
 
@@ -309,10 +302,7 @@ function computeYearly(trends, offset) {
     if (bucket && bucket.length > 0) {
       data.push(averagePoints(bucket, MONTH_NAMES[m - 1]));
     } else {
-      const point = { date: MONTH_NAMES[m - 1] };
-      for (const m2 of METRICS) { point[m2] = null; point[`${m2}_avg`] = null; }
-      point.symptoms = 0; point.vomiting = 0; point.sneezing = 0; point.lethargy = 0; point.diarrhea = 0;
-      data.push(point);
+      data.push(emptyPoint(MONTH_NAMES[m - 1]));
     }
   }
 

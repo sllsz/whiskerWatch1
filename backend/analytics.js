@@ -197,7 +197,7 @@ function generateWarnings(days, baseline, recentAvg) {
       warnings.push({
         type: 'decline', metric: m,
         severity: pctChange < BASELINE_DECLINE_HIGH_PCT ? 'high' : 'medium',
-        message: `${formatMetric(m)} has dropped ${Math.abs(pctChange).toFixed(0)}% below ${'\u2019'}s normal over the past week.`,
+        message: `${formatMetric(m)} has dropped ${Math.abs(pctChange).toFixed(0)}% below normal over the past week.`,
       });
     }
 

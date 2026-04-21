@@ -22,6 +22,23 @@ export const METRIC_COLORS = {
   water_intake: '#5BAD7A',
 };
 
+/** Chart colors per symptom type for the stacked symptom bar chart. */
+export const SYMPTOM_COLORS = {
+  vomiting: '#C0504D',
+  sneezing: '#B5612A',
+  lethargy: '#D46A9F',
+  diarrhea: '#7A8FD4',
+};
+
+/**
+ * Converts a snake_case key to Title Case.
+ * @param {string} str
+ * @returns {string}
+ */
+export function capitalize(str) {
+  return str.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
+
 /** Human-readable labels for each score level (1–5) per metric. */
 export const METRIC_LABELS = {
   appetite: ['Not eating', 'Very low', 'Below normal', 'Normal', 'Excellent'],

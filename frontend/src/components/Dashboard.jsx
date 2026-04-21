@@ -5,7 +5,7 @@ import {
   BarChart, Bar,
 } from 'recharts';
 import { useCats } from '../context/CatContext';
-import { METRICS, METRIC_COLORS, SYMPTOMS } from '../constants';
+import { METRICS, METRIC_COLORS, SYMPTOMS, SYMPTOM_COLORS, capitalize } from '../constants';
 import {
   useAnalyticsData, useTrendData, useRawLogs, getHealthLabel, getHealthColor,
 } from '../hooks/useAnalytics';
@@ -349,14 +349,11 @@ export default function Dashboard() {
                 <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#7A6252' }} />
                 <Tooltip contentStyle={{ borderRadius: 12, border: '1px solid #F0DDD0', fontFamily: 'Nunito' }} />
                 <Legend />
-                {SYMPTOMS.map((s, i) => {
-                  const colors = ['#C0504D', '#B5612A', '#D46A9F', '#7A8FD4'];
-                  return (
-                    <Bar key={s} dataKey={s} name={s.charAt(0).toUpperCase() + s.slice(1)}
-                      stackId="symptoms" fill={colors[i]}
-                      radius={i === SYMPTOMS.length - 1 ? [2, 2, 0, 0] : [0, 0, 0, 0]} />
-                  );
-                })}
+                {SYMPTOMS.map((s, i) => (
+                  <Bar key={s} dataKey={s} name={capitalize(s)}
+                    stackId="symptoms" fill={SYMPTOM_COLORS[s]}
+                    radius={i === SYMPTOMS.length - 1 ? [2, 2, 0, 0] : [0, 0, 0, 0]} />
+                ))}
               </BarChart>
             </ResponsiveContainer>
           );
