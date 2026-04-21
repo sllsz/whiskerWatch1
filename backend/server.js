@@ -105,43 +105,44 @@ app.post('/api/cats/:catId/logs', (req, res) => {
   if (!result.valid) return res.status(400).json({ error: result.error });
 
   const { date, appetite, activity, litter_box, mood, water_intake, vomiting, sneezing, lethargy, diarrhea, notes } = result.data;
+  const time = req.body.time || new Date().toTimeString().slice(0, 5);
 
-  try {
-    const insert = db.prepare(`
-      INSERT INTO daily_logs (cat_id, date, appetite, activity, litter_box, mood, water_intake, vomiting, sneezing, lethargy, diarrhea, notes)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(paramCheck.value, date, appetite, activity, litter_box, mood, water_intake, vomiting, sneezing, lethargy, diarrhea, notes);
-    const log = db.prepare('SELECT * FROM daily_logs WHERE id = ?').get(insert.lastInsertRowid);
-    res.status(201).json(log);
-  } catch (err) {
-    if (err.message.includes('UNIQUE')) {
-      return res.status(409).json({ error: 'A log already exists for this date. Use PUT to update.' });
-    }
-    throw err;
-  }
+  const insert = db.prepare(`
+    INSERT INTO daily_logs (cat_id, date, time, appetite, activity, litter_box, mood, water_intake, vomiting, sneezing, lethargy, diarrhea, notes)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(paramCheck.value, date, time, appetite, activity, litter_box, mood, water_intake, vomiting, sneezing, lethargy, diarrhea, notes);
+  const log = db.prepare('SELECT * FROM daily_logs WHERE id = ?').get(insert.lastInsertRowid);
+  res.status(201).json(log);
 });
 
-app.put('/api/cats/:catId/logs/:date', (req, res) => {
+app.put('/api/cats/:catId/logs/:logId', (req, res) => {
   const paramCheck = validateIntParam(req.params.catId, 'catId');
   if (!paramCheck.valid) return res.status(400).json({ error: paramCheck.error });
+  const logIdCheck = validateIntParam(req.params.logId, 'logId');
+  if (!logIdCheck.valid) return res.status(400).json({ error: logIdCheck.error });
 
-  const result = validateLogBody({ ...req.body, date: req.params.date });
+  const existing = db.prepare('SELECT * FROM daily_logs WHERE id = ? AND cat_id = ?').get(logIdCheck.value, paramCheck.value);
+  if (!existing) return res.status(404).json({ error: 'Log not found' });
+
+  const result = validateLogBody({ ...req.body, date: existing.date });
   if (!result.valid) return res.status(400).json({ error: result.error });
 
   const { appetite, activity, litter_box, mood, water_intake, vomiting, sneezing, lethargy, diarrhea, notes } = result.data;
   db.prepare(`
     UPDATE daily_logs SET appetite=?, activity=?, litter_box=?, mood=?, water_intake=?, vomiting=?, sneezing=?, lethargy=?, diarrhea=?, notes=?
-    WHERE cat_id=? AND date=?
-  `).run(appetite, activity, litter_box, mood, water_intake, vomiting, sneezing, lethargy, diarrhea, notes, paramCheck.value, req.params.date);
-  const log = db.prepare('SELECT * FROM daily_logs WHERE cat_id = ? AND date = ?').get(paramCheck.value, req.params.date);
+    WHERE id=?
+  `).run(appetite, activity, litter_box, mood, water_intake, vomiting, sneezing, lethargy, diarrhea, notes, logIdCheck.value);
+  const log = db.prepare('SELECT * FROM daily_logs WHERE id = ?').get(logIdCheck.value);
   res.json(log);
 });
 
-app.delete('/api/cats/:catId/logs/:date', (req, res) => {
+app.delete('/api/cats/:catId/logs/:logId', (req, res) => {
   const paramCheck = validateIntParam(req.params.catId, 'catId');
   if (!paramCheck.valid) return res.status(400).json({ error: paramCheck.error });
+  const logIdCheck = validateIntParam(req.params.logId, 'logId');
+  if (!logIdCheck.valid) return res.status(400).json({ error: logIdCheck.error });
 
-  db.prepare('DELETE FROM daily_logs WHERE cat_id = ? AND date = ?').run(paramCheck.value, req.params.date);
+  db.prepare('DELETE FROM daily_logs WHERE id = ? AND cat_id = ?').run(logIdCheck.value, paramCheck.value);
   res.status(204).end();
 });
 

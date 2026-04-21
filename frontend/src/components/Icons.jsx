@@ -349,7 +349,7 @@ export function CatAvatar({ name = 'Cat', size = 48, avatarColor, avatarEar, ava
         </>
       )}
       {/* spot */}
-      {hasSpot && <circle cx="38" cy="30" r="5" fill={palette.inner} opacity="0.4" />}
+      {hasSpot && <circle cx="38" cy="30" r="5" fill="white" opacity="0.5" />}
       {/* eyes */}
       {eyeStyle === 0 ? (
         <>

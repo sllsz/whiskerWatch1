@@ -60,18 +60,9 @@ export default function LogForm() {
     if (!validate()) return;
     setStatus(null);
 
-    let logDate = form.date;
     const result = await apiFetch(`/cats/${selectedCatId}/logs`, { method: 'POST', body: form });
     if (result.ok) {
-      setStatus({ type: 'success', message: 'Log saved successfully!' });
-    } else if (result.status === 409) {
-      const updateResult = await apiFetch(`/cats/${selectedCatId}/logs/${form.date}`, { method: 'PUT', body: form });
-      if (updateResult.ok) {
-        setStatus({ type: 'success', message: `Log for ${form.date} updated successfully!` });
-      } else {
-        setStatus({ type: 'error', message: updateResult.error });
-        return;
-      }
+      setStatus({ type: 'success', message: 'Log saved! You can add another entry for today if needed.' });
     } else {
       setStatus({ type: 'error', message: result.error });
       return;

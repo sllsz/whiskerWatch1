@@ -12,7 +12,7 @@ export default function CatSelector() {
     <div className="cat-selector-wrapper">
       <CatAvatar
         name={selected?.name || ''}
-        size={28}
+        size={36}
         avatarColor={selected?.avatar_color}
         avatarEar={selected?.avatar_ear}
         avatarEye={selected?.avatar_eye}

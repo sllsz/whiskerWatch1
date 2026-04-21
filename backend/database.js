@@ -26,6 +26,7 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     cat_id INTEGER NOT NULL,
     date TEXT NOT NULL,
+    time TEXT DEFAULT '',
     appetite INTEGER NOT NULL CHECK(appetite BETWEEN 1 AND 5),
     activity INTEGER NOT NULL CHECK(activity BETWEEN 1 AND 5),
     litter_box INTEGER NOT NULL CHECK(litter_box BETWEEN 1 AND 5),
@@ -37,9 +38,10 @@ db.exec(`
     diarrhea INTEGER DEFAULT 0,
     notes TEXT DEFAULT '',
     created_at TEXT DEFAULT (datetime('now')),
-    FOREIGN KEY (cat_id) REFERENCES cats(id) ON DELETE CASCADE,
-    UNIQUE(cat_id, date)
+    FOREIGN KEY (cat_id) REFERENCES cats(id) ON DELETE CASCADE
   );
+
+  CREATE INDEX IF NOT EXISTS idx_logs_cat_date ON daily_logs(cat_id, date);
 
   CREATE TABLE IF NOT EXISTS custom_symptoms (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

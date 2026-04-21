@@ -41,9 +41,9 @@ export default function History() {
 
   useEffect(() => { fetchLogs(); }, [selectedCatId, filters.start, filters.end]);
 
-  const handleDelete = async (date) => {
+  const handleDelete = async (logId) => {
     if (!window.confirm('Delete this log entry?')) return;
-    await apiFetch(`/cats/${selectedCatId}/logs/${date}`, { method: 'DELETE' });
+    await apiFetch(`/cats/${selectedCatId}/logs/${logId}`, { method: 'DELETE' });
     fetchLogs();
   };
 
@@ -240,8 +240,11 @@ export default function History() {
         {paginatedLogs.map(log => (
           <div key={log.id} className="log-card">
             <div className="log-date">
-              <strong>{new Date(log.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</strong>
-              <button className="btn-small btn-danger" onClick={() => handleDelete(log.date)}>Delete</button>
+              <strong>
+                {new Date(log.date + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                {log.time && <span className="log-time"> at {log.time}</span>}
+              </strong>
+              <button className="btn-small btn-danger" onClick={() => handleDelete(log.id)}>Delete</button>
             </div>
 
             <div className="log-metrics">
@@ -275,13 +278,29 @@ export default function History() {
             Previous
           </button>
           <div className="page-numbers">
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
-              <button key={p}
-                className={`page-num ${p === page ? 'active' : ''}`}
-                onClick={() => setPage(p)}>
-                {p}
-              </button>
-            ))}
+            {(() => {
+              const pages = [];
+              const maxVisible = 5;
+              let start = Math.max(1, page - Math.floor(maxVisible / 2));
+              let end = Math.min(totalPages, start + maxVisible - 1);
+              start = Math.max(1, end - maxVisible + 1);
+
+              if (start > 1) {
+                pages.push(<button key={1} className="page-num" onClick={() => setPage(1)}>1</button>);
+                if (start > 2) pages.push(<span key="start-dots" className="page-dots">...</span>);
+              }
+              for (let p = start; p <= end; p++) {
+                pages.push(
+                  <button key={p} className={`page-num ${p === page ? 'active' : ''}`}
+                    onClick={() => setPage(p)}>{p}</button>
+                );
+              }
+              if (end < totalPages) {
+                if (end < totalPages - 1) pages.push(<span key="end-dots" className="page-dots">...</span>);
+                pages.push(<button key={totalPages} className="page-num" onClick={() => setPage(totalPages)}>{totalPages}</button>);
+              }
+              return pages;
+            })()}
           </div>
           <button className="page-btn" disabled={page === totalPages}
             onClick={() => setPage(p => p + 1)}>

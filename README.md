@@ -8,13 +8,13 @@ Subtle behavioral changes in cats are often early signals of health issues. Whis
 
 ## Features
 
-- **Daily Behavior Logging** — Rate appetite, activity, litter box, mood, and water intake on a 1–5 scale with intuitive sliders. Toggle symptoms like vomiting, sneezing, lethargy, and diarrhea.
+- **Behavior Logging** — Rate appetite, activity, litter box, mood, and water intake on a 1–5 scale with intuitive sliders. Toggle symptoms like vomiting, sneezing, lethargy, and diarrhea. Log multiple times per day (like Apple Watch mood tracking).
 - **Multi-Pet Profiles** — Create and manage multiple cat profiles. Switch between cats from any page with shared state across the app.
-- **Interactive Analytics Dashboard** — View time-series trend charts (7-day rolling averages), daily score bar charts, and symptom frequency visualizations. Toggle metrics on/off to compare. Scroll through time with daily/weekly/monthly views.
+- **Interactive Analytics Dashboard** — View time-series trend charts (7-day rolling averages) with a radar chart showing period averages vs baseline. Toggle metrics on/off to compare. Scroll through time with daily/weekly/monthly/yearly views.
 - **Wellness Score** — A composite 0–100 health score computed from recent metric averages, symptom frequency, and week-over-week trends.
 - **Pattern-Based Warning System** — Detects baseline deviations, consecutive-day declines, week-over-week drops, and symptom frequency spikes. Warnings are classified by severity (high/medium).
 - **Adaptive Baseline** — Each cat's "normal" is personalized using their full log history. The baseline adjusts automatically as more data is logged.
-- **History & Filtering** — Browse and filter past logs by date range, metric type, score range, or symptom presence. Paginated at 10 records per page.
+- **History & Filtering** — Browse and filter past logs by date range, metric type, score range, or symptom presence. Symptom history shows stacked bar chart broken down by individual symptom type. Paginated at 10 records per page.
 - **Custom Symptoms** — Define up to 10 custom symptoms (e.g., "excessive grooming") that appear alongside the built-in ones in the log form.
 - **Avatar Customization** — Customize each cat's profile picture by choosing fur color, ear shape, eye style, and pattern.
 - **CSV Export** — Download your cat's log history as a CSV file for external analysis or vet visits.
@@ -51,7 +51,7 @@ npm install
 
 ### Seed Demo Data (Optional but Recommended)
 
-Pre-populate the database with 3 cats and 45 days of realistic behavioral data:
+Pre-populate the database with 4 cats and ~1500 logs covering 1 year of realistic behavioral data with seasonal variation and multi-entry days:
 
 ```bash
 cd backend
@@ -59,9 +59,10 @@ npm run seed
 ```
 
 This creates:
-- **Mochi** (Scottish Fold) — Had a health dip 2 weeks ago, now recovering
-- **Luna** (Siamese) — Generally healthy with a recent mild mood dip
-- **Biscuit** (Orange Tabby) — Young and energetic with occasional tummy issues
+- **Mochi** (Scottish Fold) — Healthy veteran with 1 year of stable data
+- **Luna** (Siamese) — Sensitive and stress-reactive, with spring allergies
+- **Biscuit** (Orange Tabby) — Food-motivated with digestive issues
+- **Pebble** (Senior) — Senior cat with gradual kidney disease decline
 
 ### Run the App
 
@@ -111,7 +112,7 @@ final/
 │   │   │   └── useAnalytics.js  # Dashboard data hooks
 │   │   └── components/
 │   │       ├── Dashboard.jsx    # Analytics charts & health score
-│   │       ├── LogForm.jsx      # Daily behavior logging form
+│   │       ├── LogForm.jsx      # Behavior logging form
 │   │       ├── History.jsx      # Log history, filters, pagination
 │   │       ├── CatManager.jsx   # Add/edit/delete cat profiles
 │   │       ├── CatSelector.jsx  # Cat dropdown in header

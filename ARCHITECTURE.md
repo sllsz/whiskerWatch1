@@ -39,7 +39,7 @@ This document explains how the codebase is organized, what each file does, and h
 Creates and exports a single SQLite connection. On first run, it creates four tables:
 
 - **`cats`** — id, name, breed, birth_date, weight, avatar preferences (color, ear, eye, pattern)
-- **`daily_logs`** — id, cat_id (FK), date, 5 metric scores (1–5), 4 symptom flags (0/1), notes. Has a UNIQUE constraint on `(cat_id, date)` so each cat can only have one log per day.
+- **`daily_logs`** — id, cat_id (FK), date, time, 5 metric scores (1–5), 4 symptom flags (0/1), notes. Multiple logs per day are allowed (no UNIQUE constraint on cat_id+date). Users can log as many times per day as they want.
 - **`custom_symptoms`** — id, name (unique). Global symptom definitions created by the user (max 10).
 - **`log_custom_symptoms`** — log_id, symptom_id (composite PK). Links custom symptoms to specific log entries.
 
@@ -72,11 +72,13 @@ Pure functions (no database or HTTP awareness). The route handler fetches all lo
 |---|---|
 | `baseline` | All-time average for each metric. Adapts as more data arrives. |
 | `baselineStdDev` | Standard deviation per metric. Used to show "usual range" in the UI. |
-| `trends` | One data point per day with raw scores + 7-day rolling averages. Powers the trend charts. |
+| `trends` | One data point per day (multiple logs per day are aggregated into daily averages first) with raw scores + 7-day rolling averages. Powers the trend charts. |
 | `recentAvg` | Average of each metric over the last 7 days. Compared against baseline. |
 | `healthScore` | Composite 0–100 score from three components (see below). |
 | `warnings` | Array of `{ type, metric, severity, message }` objects. |
-| `stats` | `{ totalLogs, totalSymptoms, daysCovered, streakDays }` |
+| `stats` | `{ totalLogs, totalSymptoms, daysCovered, daysLogged, streakDays }` |
+
+Note: `totalLogs` counts all individual log entries, while `daysLogged` counts distinct days that have at least one log (these differ when multiple logs exist per day). `daysCovered` is the span from first to last log date.
 
 **Health Score (0–100) has three components:**
 1. **Recent metric averages (up to 80 pts)** — each metric contributes `(score/5) × 16`
@@ -98,9 +100,9 @@ Handles HTTP only — no business logic. Structure:
 
 1. **Request logging middleware** — logs every request with timestamp, method, path, status, duration
 2. **Cat CRUD** — GET/POST/PUT/DELETE `/api/cats` with validation and 404 checks
-3. **Log CRUD** — GET/POST/PUT/DELETE `/api/cats/:catId/logs` with validation. POST handles the UNIQUE constraint conflict by returning 409 (the frontend retries as PUT).
+3. **Log CRUD** — GET/POST/DELETE `/api/cats/:catId/logs` with validation. Multiple logs per day are allowed. DELETE uses log ID (not date) to remove a specific entry.
 4. **Avatar** — PUT `/api/cats/:id/avatar` saves avatar customization preferences
-5. **Custom Symptoms** — GET/POST/DELETE `/api/custom-symptoms` manages global custom symptom definitions (max 10). GET/PUT `/api/cats/:catId/logs/:date/custom-symptoms` attaches custom symptoms to log entries.
+5. **Custom Symptoms** — GET/POST/DELETE `/api/custom-symptoms` manages global custom symptom definitions (max 10). GET/PUT `/api/cats/:catId/logs/:logId/custom-symptoms` attaches custom symptoms to log entries.
 6. **Analytics** — GET `/api/cats/:catId/analytics` fetches all logs and delegates to `computeAnalytics()`
 7. **Global error handler** — catches unhandled exceptions, logs them, returns `{ error: "Internal server error" }` instead of stack traces
 
@@ -141,8 +143,7 @@ Key design decisions:
 Extracted from Dashboard.jsx to keep rendering separate from data transformation.
 
 - **`useAnalyticsData(catId)`** — fetches analytics and manages loading/error state
-- **`useTrendData(analytics, view, offset)`** — windows and aggregates trend data by daily/weekly/monthly view with pagination
-- **`useBarData(analytics, offset)`** — windows daily score data with pagination
+- **`useTrendData(analytics, view, offset)`** — windows and aggregates trend data by view with pagination. Views: Daily (per day), Weekly (Mon–Sun averages), Monthly (per-week averages), Yearly (per-month averages).
 - **`getHealthLabel(score)`** / **`getHealthColor(score)`** — maps score to display label and color
 
 ### Components
@@ -151,9 +152,9 @@ Extracted from Dashboard.jsx to keep rendering separate from data transformation
 |---|---|
 | **`App.jsx`** | Layout shell. Shows loading screen → error screen → onboarding (if no cats) → main app with header, nav, routes, footer. |
 | **`Onboarding.jsx`** | Welcome screen with feature overview and a form to create the first cat. Only shown when `cats.length === 0`. |
-| **`Dashboard.jsx`** | The main analytics page. Renders: health score ring, quick stats, warning alerts, baseline comparison cards, trend line chart, daily bar chart, symptom area chart. All chart data comes from `useAnalytics` hooks. |
-| **`LogForm.jsx`** | Daily log entry form. Sliders for 5 metrics (1–5), toggle buttons for built-in + custom symptoms, date picker, notes field. On submit: POST to create, auto-retries as PUT if a log already exists for that date. |
-| **`History.jsx`** | Log history with collapsible filter panel (date range, metric selection, score range, symptoms-only toggle). Paginated at 10 per page. CSV export button. |
+| **`Dashboard.jsx`** | The main analytics page. Renders: health score ring, quick stats, warning alerts, baseline comparison cards, trend line chart, radar chart (period averages vs baseline), and symptom stacked bar chart (broken down by individual symptom type). All chart data comes from `useAnalytics` hooks. |
+| **`LogForm.jsx`** | Behavior log entry form. Sliders for 5 metrics (1–5), toggle buttons for built-in + custom symptoms, date picker, notes field. Supports multiple logs per day. |
+| **`History.jsx`** | Log history with collapsible filter panel (date range, metric selection, score range, symptoms-only toggle). Paginated at 10 per page. CSV export button. Deletion by log ID. |
 | **`CatManager.jsx`** | Cat profile CRUD with avatar customizer and custom symptom management. Shows all cats with their avatars. Add/edit/delete with validation. |
 | **`CatSelector.jsx`** | Dropdown in the header to switch between cats. Shows the selected cat's generated avatar. |
 | **`Icons.jsx`** | SVG line art icon library (cat face, paw, bowl, stethoscope, etc.) plus `CatAvatar` — a customizable cat face SVG. Uses stored avatar preferences if set, otherwise procedurally generates from the cat's name. |
@@ -169,7 +170,7 @@ User fills out LogForm
 POST /api/cats/:id/logs  (validated by validation.js)
         │
         ▼
-Saved to daily_logs table in SQLite
+Saved to daily_logs table in SQLite (multiple logs per day allowed)
         │
         ▼
 User navigates to Dashboard
@@ -179,14 +180,15 @@ GET /api/cats/:id/analytics
         │
         ▼
 analytics.js loads ALL logs for this cat, computes:
-  ├── baseline (all-time averages)
-  ├── trends (daily scores + 7-day rolling averages)
+  ├── aggregate multiple logs per day into daily averages
+  ├── baseline (all-time averages from daily averages)
+  ├── trends (daily averaged scores + 7-day rolling averages)
   ├── healthScore (composite 0–100)
   ├── warnings (rule-based alerts)
-  └── stats (totals and streak)
+  └── stats (totals, daysLogged, and streak)
         │
         ▼
-Dashboard renders charts, score ring, and warning cards
+Dashboard renders charts, score ring, radar chart, and warning cards
 ```
 
 ---
@@ -195,5 +197,5 @@ Dashboard renders charts, score ring, and warning cards
 
 1. **Multiple pages/components with shared state** — 4 pages sharing `CatContext` for selected cat
 2. **Persistent data** — SQLite database survives restarts
-3. **Non-trivial logic/data processing** — analytics engine with rolling averages, baseline modeling, composite health scoring, rule-based warning system with 5 warning types
-4. **Responsive, thoughtful UX** — warm cat-themed design, SVG artwork, form validation, error/loading/empty states, pagination, scrollable charts with daily/weekly/monthly views
+3. **Non-trivial logic/data processing** — analytics engine with multi-log-per-day aggregation, rolling averages, baseline modeling, composite health scoring, rule-based warning system with 5 warning types
+4. **Responsive, thoughtful UX** — warm cat-themed design, SVG artwork, form validation, error/loading/empty states, pagination, scrollable charts with daily/weekly/monthly/yearly views, radar chart for baseline comparison
